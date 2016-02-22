@@ -1,0 +1,81 @@
+---
+title: "Prediction Assignment"
+output: html_document
+---
+## Synopsis
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. This project will use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.  The goal is to use that data to predict the manner in which the participants did the exercise:
+
+    Class A: exactly according to the specification
+    Class B: throwing the elbows to the front
+    Class C: lifting the dumbbell only halfway
+    Class D: lowering the dumbbell only halfway
+    Class E: throwing the hips to the front
+
+For more information, see http://groupware.les.inf.puc-rio.br/har
+
+## Prepare Data
+### Read data and see number of rows and columns
+```{r}
+alltrain = read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
+testing = read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
+
+dim(alltrain)
+dim(testing)
+
+```
+
+### Slice training into training and validation
+```{r}
+library(caret)
+set.seed(1342)
+inTrain <- createDataPartition(y=alltrain$classe,p=0.7, list=FALSE)
+training <- alltrain[inTrain,]; 
+validation <- alltrain[-inTrain,]
+
+```
+
+### Take a quick look at training data
+```{r eval=FALSE}
+head(training)
+```
+The first seven columns are identifiers such as names and time stamps, so I will remove them before training.  I will also remove columns that don't have numeric values for all rows.
+```{r}
+library(caret)
+classe <- training$classe
+training <- training[,-seq(1:7)]
+training <- training[, colSums(is.na(training)) == FALSE]
+training <- training[, sapply(training, is.numeric)]
+training$classe <- classe
+dim(training)
+summary(training$classe)
+```
+```{r eval=FALSE}
+head(training)
+```
+
+## Fit a Model
+Just as in the original paper, I will use Random Forest algorithm
+```{r}
+library(ggplot2)
+library(rattle)
+set.seed(1837)
+modFit <- train(classe ~ ., method="rf", data=training, ntree = 50)
+modFit
+# fancyRpartPlot(modFit$finalModel)
+```
+
+
+## Model Performance
+### With Validation set
+The accuracy is estimated at 99.17%
+```{r}
+valdPred <- predict(modFit, validation)
+confusionMatrix(valdPred, validation$classe)
+```
+
+### With Testing set
+When this model was used against the testing data, it scored 20 out of 20 correct.
+```{r}
+predict(modFit,newdata=testing)
+```
+
